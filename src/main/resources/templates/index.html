@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>语音识别系统</title>
+<!--    <link rel="stylesheet" th:href="@{/css/index.css}" type="text/css">-->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<!--    <script type="text/javascript" th:src="@{/js/index.js}"></script>-->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        body {
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: lightgoldenrodyellow;
+        }
+
+        /*第三种方法*/
+        .main {
+            position: absolute;
+            width: 450px;
+            height: 300px;
+            background-color: #8cc5ff;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            /*margin: 0 auto;*/
+            box-sizing: border-box;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+
+        }
+
+        .content {
+            position: absolute;
+            width: 450px;
+            height: 300px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border: 1px solid;
+            text-align: left;
+            padding: 10px;
+            /*overflow: scroll;*/
+            /*display: none;*/
+        }
+
+        .back_wrapper {
+            height: 25px;
+            text-align: center;
+        }
+
+        /*.content .back{*/
+        /*    margin-right: 0;*/
+        /*    margin-bottom: 0;*/
+        /*    */
+        /*}*/
+        .content h3 {
+            height: 25px;
+            text-align: center;
+        }
+
+        .content_p {
+            width: 100%;
+            height: 200px;
+            overflow: auto;
+        }
+
+        .main_one {
+            background-color: orchid;
+            min-width: 150px;
+            min-height: 150px;
+            justify-items: center;
+            align-items: center;
+            border: 1px solid #fff;
+            box-sizing: border-box;
+            transition: all .2s;
+        }
+
+        .main_one:hover {
+            transform: scale(1.05);
+        }
+
+
+        /* css注释：为了观察效果设置宽度 边框 高度等样式 */
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="main">
+        <div class="main_one" @click="getListen">
+            <!--        <div th:each="list,stat : ${result}">-->
+            <!--            <p th:text="${list}"></p>-->
+            <!--        </div>-->
+            <p>语音听写</p>
+        </div>
+        <div class="main_one" @click="getYyzx">
+            <p>语音转写</p>
+        </div>
+        <div class="main_one"  @click="getYyHc">
+            <p>语音合成</p>
+        </div>
+        <div class="main_one" @click="getJJFY">
+            <p>机器翻译</p>
+        </div>
+<!--        <div class="main_one">-->
+<!--            <p>语音识别</p>-->
+<!--        </div>-->
+<!--        <div class="main_one">-->
+<!--            <p>语音识别</p>-->
+<!--        </div>-->
+    </div>
+    <!--    语音识别结果-->
+    <div class="content" v-show="isShow">
+        <h3>本次识别内容</h3>
+        <div class="content_p">
+            <p v-for="(item,index) in listenResult" :key="index">
+                {{item}}
+            </p>
+        </div>
+        <div class="back_wrapper">
+            <el-button class="back" plain @click="goBack">返回</el-button>
+        </div>
+    </div>
+    <!--    语音转写文件上传-->
+    <div class="content" v-show="showFileUpload">
+        <h3>请上传音频文件：</h3>
+        <div class="content_p">
+            <el-upload
+                    class="upload-demo"
+                    drag
+                    action="http://localhost:8080/yyzx"
+                    :on-success="handleAvatarSuccess"
+                    multiple>
+                <i class="el-icon-upload"></i>
+                <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+                <div class="el-upload__tip" slot="tip">只能上传jpg/png文件，且不超过500kb</div>
+            </el-upload>
+        </div>
+        <div class="back_wrapper">
+            <el-button class="back" plain @click="goBack">返回</el-button>
+        </div>
+    </div>
+<!--    语音合成文本上传-->
+    <div class="content" v-show="isShowYYHC">
+        <h3>请输入需要转写的内容</h3>
+        <div class="content_p">
+            <el-input
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 4}"
+                    placeholder="请输入内容"
+                    v-model="textarea">
+            </el-input>
+            <div v-show="isDolaodShow">
+                <p style="color: red">合成文件地址：{{ypwjxz}}</p>
+            </div>
+
+        </div>
+        <div class="back_wrapper">
+            <el-button class="back" primary @click="goHgoHcc">开始合成</el-button>
+            <el-button class="back" plain @click="goBack">返回</el-button>
+        </div>
+    </div>
+    <!--    机器翻译文本上传-->
+    <div class="content" v-show="isShowJJFY">
+        <h3>请输入需要翻译的内容</h3>
+        <div class="content_p">
+            <el-input
+                    type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 4}"
+                    placeholder="请输入内容"
+                    v-model="fy_ch">
+            </el-input>
+            <div v-show="isFyShow">
+                <h3>翻译结果：</h3>
+                <el-input
+                        type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 4}"
+                        placeholder=""
+                        v-model="fy_en">
+                </el-input>
+            </div>
+
+        </div>
+        <div class="back_wrapper">
+            <el-button class="back" primary @click="gofy">点我翻译</el-button>
+            <el-button class="back" plain @click="goBack">返回</el-button>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            baseUrl: 'http://localhost:8080',
+            listenResult: [],
+            isShow: false,
+            showFileUpload: false,
+            isShowYYHC: false,
+            isDolaodShow: false,
+            isShowJJFY: false,
+            isFyShow: false,
+            yyzxStr: "",
+            textarea: '',
+            ypwjxz: '',
+            fy_en: '',
+            fy_ch: ''
+        },
+        methods: {
+            handleAvatarSuccess(res, file) {
+                console.log("语音转写结果："+res)
+                this.$alert(res.data, '语音转写结果', {
+                    confirmButtonText: '确定',
+                    callback: action => {
+                    this.$message({
+                        type: 'info',
+                        message: `action: ${ action }`
+                    });
+            }
+            });
+            },
+            goBack() {
+                this.listenResult = []
+                this.isShow = false
+                this.showFileUpload = false
+                this.isShowYYHC = false
+                this.isDolaodShow = false
+                this.isShowJJFY = false
+                this.isFyShow = false
+            },
+            getListen() {
+
+                const then = this
+                then.listenResult =[]
+                const loading = this.$loading({
+                    lock: true,
+                    text: '录音中...',
+                    spinner: 'el-icon-loading',
+                    background: 'rgba(0, 0, 0, 0.7)'
+                });
+                axios.get(this.baseUrl + '/yytx')
+                    .then(function (response) {
+                        // console.log(response)
+                        if (response.status === 200) {
+                            if (response.data.ret == true) {
+                                then.listenResult = response.data.data
+                                loading.close();
+                                then.isShow = true
+                            } else {
+                                console.log(response.data.msg)
+                            }
+                        } else {
+                            console.log(response.statusText)
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log(error)
+                    })
+            },
+            getYyzx() {
+                this.showFileUpload = true
+            },
+            getYyHc() {
+                this.isShowYYHC = true
+            },
+            getJJFY() {
+                this.isShowJJFY = true
+            },
+            goHc() {
+                const then = this;
+                console.log(then.textarea)
+                axios.post(this.baseUrl + '/yyhc',
+                    {
+                    param: then.textarea
+                })
+                    .then(function (response) {
+                        // console.log(response)
+
+                        if (response.status === 200) {
+                            if (response.data.ret == true) {
+                                //得到音频文件下载地址
+                                then.ypwjxz  = response.data.data
+                                then.isDolaodShow = true
+                            } else {
+                                console.log(response.data.msg)
+                            }
+                    } else {
+                    console.log(response.statusText)
+                }
+
+                    })
+                    .catch(function (error) {
+                        console.log(error)
+                    })
+            },
+            gofy() {
+                const then = this;
+                axios.post(this.baseUrl + '/jjfy',
+                    {
+                    param: then.fy_ch
+                })
+                    .then(function (response) {
+                        // console.log(response)
+
+                        if (response.status === 200) {
+                            if (response.data.ret == true) {
+                                //得到音频文件下载地址
+                                then.fy_en  = response.data.data
+                                then.isFyShow = true
+                            } else {
+                                console.log(response.data.msg)
+                            }
+                    } else {
+                    console.log(response.statusText)
+                }
+
+                    })
+                    .catch(function (error) {
+                        console.log(error)
+                    })
+            }
+        }
+    })
+</script>
+</html>

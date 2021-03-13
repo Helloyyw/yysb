@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>语音识别助手</title>
+    <!--    <link rel="stylesheet" th:href="@{/css/index.css}" type="text/css">-->
+    <!--    <script type="text/javascript" th:src="@{/js/vue.js}"></script>-->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!--    <script type="text/javascript" th:src="@{/js/index.js}"></script>-->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script th:src="@{/js/recoder.js}" type="text/javascript" charset="UTF-8"></script>
+    <script th:src="@{/js/wav.js}" type="text/javascript" charset="UTF-8"></script>
+    <script th:src="@{/js/jquery.js}" type="text/javascript" charset="UTF-8"></script>
+    <script th:src="@{/js/jquery.cookie.min.js}" type="text/javascript" charset="UTF-8"></script>
+
+    <style>
+        body {
+            margin: 0px;
+            padding: 0px;
+        }
+
+        .container {
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            max-width: 800px;
+            border: 2px solid #c8c9cc;
+            border-radius: 2%;
+            box-sizing: border-box;
+        }
+        .tips {
+            color: #6578885c;
+            background-color: aliceblue;
+            padding: 10px;
+            font-size: 12px;
+        }
+        .container_title {
+            padding: 10px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .textShow {
+            padding: 10px 20px;
+
+        }
+        .el-tab-pane {
+            padding: 10px 20px;
+
+        }
+
+        .chnageZX {
+            padding: 10px 20px;
+
+        }
+
+        .container_yyhc {
+            padding: 10px 20px;
+
+        }
+
+        .audotSHow {
+            padding: 10px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .audotButton {
+
+        }
+
+        button {
+            background: #ff8000;
+            border: 0px;
+            padding: 4px 10px;
+            border-radius: 2px;
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .toolBar {
+            padding: 10px 20px;
+        }
+
+        button:hover {
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <el-tabs  style=" padding: 6px;" v-model="activeName" @tab-click="handleClick">
+
+            <el-tab-pane label="机器翻译" name="first">
+                <p class="tips">所听即所得，通过录音实现文字转写功能，同时可以点击不同种类的语言进行翻译。</p>
+                <p class="tips">特别注意第二次次录音时记得手动刷新页面！</p>
+                <div class="audotSHow">
+
+                    <audio :src="audioSrc" controls="controls">
+                        Your browser does not support the audio element.
+                    </audio>
+                    <br>
+                    <span>录音时长：{{ lyTime }} 毫秒</span>
+                    <br>
+                    <div class="audotButton">
+                        <button type="button" @click="init">打开录音权限</button>
+                        <button type="button" @click="recStart">开始录音</button>
+                        <button type="button" @click="recStop">结束录音</button>
+                        <button type="button" @click="pause">暂停录音</button>
+                        <button type="button" @click="resume">继续录音</button>
+                        <button type="button" @click="ljPlay">立即播放</button>
+                        <!--                <button type="button" @click="getAudioFile">获取音频</button>-->
+                    </div>
+                    <br>
+                </div>
+
+                <div class="textShow">
+                    <el-form ref="form" :model="form" label-width="80px" label-position="top">
+                        <el-form-item label="文字内容：">
+                            <el-input type="textarea"
+                                      :rows="5"
+                                      placeholder="请输入内容"
+                                      v-model="form.textarea"
+                                      size="large"
+                            >
+                            </el-input>
+                        </el-form-item>
+                        <!--                翻译文本框-->
+                        <el-form-item label="翻译后的内容：" v-show="transfromed">
+                            <el-input type="textarea"
+                                      :rows="5"
+                                      placeholder="请输入内容"
+                                      v-model="form.transfromText"
+                                      size="large"
+                            >
+                            </el-input>
+                        </el-form-item>
+
+                    </el-form>
+                </div>
+
+                <el-row>
+                    <el-button type="primary" @click="gofy('en')">英文翻译</el-button>
+                    <el-button type="primary" @click="gofy('fr')">法语翻译</el-button>
+                    <el-button type="primary" @click="gofy('ja')">日语翻译</el-button>
+                    <el-button type="primary" @click="gofy('ru')">俄语翻译</el-button>
+                    <el-button type="primary" @click="gofy('es')">西班牙语翻译</el-button>
+                    <el-button type="primary" @click="gofy('ar')">阿拉伯语翻译</el-button>
+<!--                    <el-button type="success" @click="goHc">语音合成</el-button>-->
+<!--                    <el-button type="info" @click="showFile">语音转写</el-button>-->
+                </el-row>
+            </el-tab-pane>
+            <el-tab-pane label="语音合成" name="second">
+                <div class="tips">语音合成功能可以实现将你输入的中文内容转化为语音文件，并提供下载功能。
+                    由于语音文件的频率特殊性，请使用专门的软件播放</div>
+
+                <div class="textShow">
+                    <el-form ref="form" :model="form" label-width="80px" label-position="top">
+                        <el-form-item label="文字内容：">
+                            <el-input type="textarea"
+                                      :rows="5"
+                                      placeholder="请输入内容"
+                                      v-model="form.textarea"
+                                      size="large"
+                            >
+                            </el-input>
+                        </el-form-item>
+
+
+                    </el-form>
+                </div>
+                <div v-show="changeHc" class="container_yyhc">
+                    <p> 语音合成文件：</p>
+                    <el-link type="success">{{yyhcLink}}</el-link>
+                    <el-button @click="goPlay">点击下载音频文件</el-button>
+                </div>
+                <el-row>
+                    <el-button type="success" @click="goHc">语音合成</el-button>
+                </el-row>
+            </el-tab-pane>
+            <el-tab-pane label="语音转写" name="third"   v-loading="loading">
+
+                <div class="tips">语音转写功能可以实现将符合系统要求的音频文件，进行转写为中文文字。只接受mp3格式和wav格式的音频文件</div>
+                <el-row>
+                    <el-button type="primary" @click="showFile">语音转写</el-button>
+                </el-row>
+                <div class="chnageZX" v-show="showFileUpload" >
+                    <h3>请上传音频文件：</h3>
+                    <div class="content_p" >
+                        <el-upload
+                                class="upload-demo"
+                                drag
+                                action="http://localhost:8080/yyzx"
+                                :on-success="handleAvatarSuccess"
+                                :on-progress="uploading"
+                                multiple>
+                            <i class="el-icon-upload"></i>
+                            <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+                            <div class="el-upload__tip" slot="tip">只能上传音频文件</div>
+                        </el-upload>
+                    </div>
+                </div>
+                <div class="textShow">
+                    <el-form ref="form" :model="form" label-width="80px" label-position="top">
+                        <el-form-item label="文字内容：">
+                            <el-input type="textarea"
+                                      :rows="5"
+                                      placeholder="请输入内容"
+                                      v-model="form.textarea"
+                                      size="large"
+                            >
+                            </el-input>
+                        </el-form-item>
+
+
+                    </el-form>
+                </div>
+            </el-tab-pane>
+
+        </el-tabs>
+
+<!--        <div class="container_title">-->
+<!--            <h3>语音识别助手</h3>-->
+<!--        </div>-->
+<!--        <div class="toolBar">-->
+<!--            <el-row>-->
+<!--                <el-button type="primary" @click="gofy('en')">英文翻译</el-button>-->
+<!--                <el-button type="primary" @click="gofy('fr')">法语翻译</el-button>-->
+<!--                <el-button type="primary" @click="gofy('ja')">日语翻译</el-button>-->
+<!--                <el-button type="primary" @click="gofy('ru')">俄语翻译</el-button>-->
+<!--                <el-button type="primary" @click="gofy('es')">西班牙语翻译</el-button>-->
+<!--                <el-button type="primary" @click="gofy('ar')">阿拉伯语翻译</el-button>-->
+
+<!--                <el-button type="success" @click="goHc">语音合成</el-button>-->
+<!--                <el-button type="info" @click="showFile">语音转写</el-button>-->
+<!--            </el-row>-->
+<!--        </div>-->
+    </div>
+</div>
+
+</body>
+<script>
+    let user = $.cookie('user');
+    if (user == null) {
+        alert("对不起，你还未登陆系统！");
+        window.location = "http://localhost:8080/login";
+    }
+    var app = new Vue({
+        el: '#app',
+        data: {
+            baseUrl: 'http://localhost:8080',
+            loading: false,
+            activeName: 'first',
+            transfromed: false,
+            showFileUpload: false,
+            changeHc: false,
+            rec: null,
+            audioSrc: null,
+            audioFile: null,
+            lyTime: null,
+            yyhcLink: '',
+            form: {
+                textarea: '',
+                transfromText: ''
+            }
+        },
+        methods: {
+            handleClick(tab, event) {
+                this.form.textarea='';
+                console.log(tab, event);
+            },
+            showFile() {
+                this.transfromed = false;
+                this.changeHc = false;
+                this.showFileUpload = true;
+            },
+            uploading (event, file, fileList) {
+                this.loading = true;
+
+            },
+            handleAvatarSuccess(res, file) {
+                console.log("语音转写结果：" + res)
+                this.loading = false;
+                this.form.textarea = res.data;
+                // this.$alert(ares.dat, '语音转写结果', {
+                //     confirmButtonText: '确定',
+                //     callback: action => {
+                //         this.$message({
+                //             type: 'info',
+                //             message: `action: ${action}`
+                //         });
+                //     }
+                // });
+            },
+            /**获取录音文件**/
+            gofy(languge) {
+                const then = this;
+                this.showFileUpload = false;
+                this.changeHc = false;
+                if (then.form.textarea == '') {
+                    alert("文本框里的数据为空");
+                    return;
+                }
+                axios.post(this.baseUrl + '/jjfy',
+                    {
+                        param: then.form.textarea,
+                        languge: languge
+                    })
+                    .then(function (response) {
+                        // console.log(response)
+                        if (response.status === 200) {
+                            if (response.data.ret == true) {
+                                then.form.transfromText = response.data.data
+                                then.transfromed = true
+                            } else {
+                                console.log(response.data.msg)
+                            }
+                        } else {
+                            console.log(response.statusText)
+                        }
+
+                    })
+                    .catch(function (error) {
+                        console.log(error)
+                    })
+            },
+            /**暂停录音**/
+            pause() {
+                this.rec.pause()
+            },
+            /**继续录音**/
+            resume() {
+                this.rec.resume()
+            },
+            /**开始录音**/
+            recStart() { //打开了录音后才能进行start、stop调用
+                this.rec.start();
+            },
+            /**结束录音**/
+            recStop() {
+                let $this = this;
+                this.rec.stop(function (blob, duration) {
+                    console.log(blob, (window.URL || webkitURL).createObjectURL(blob), "时长:" + duration + "ms");
+                    $this.audioFile = (window.URL || webkitURL).createObjectURL(blob);
+                    $this.lyTime = duration;
+                    $this.rec.close(); //释放录音资源，当然可以不释放，后面可以连续调用start；但不释放时系统或浏览器会一直提示在录音，最佳操作是录完就close掉
+                    $this.rec = null;
+                    //已经拿到blob文件对象想干嘛就干嘛：立即播放、上传
+                    /*** 【立即播放例子】 ***/
+                    // let audio = document.createElement("audio");
+                    // audio.controls = true;
+                    // //document.body.appendChild(audio);
+                    // //简单利用URL生成播放地址，注意不用了时需要revokeObjectURL，否则霸占内存
+                    // audio.src = (window.URL || webkitURL).createObjectURL(blob);
+                    // audio.play();
+                    /*** 【立即上传】 ***/
+                    var form = new FormData();
+                    form.append("upfile", blob, "recorder.wav"); //和普通form表单并无二致，后端接收到upfile参数的文件，文件名为recorder.mp3
+//...其他表单参数
+                    $.ajax({
+                        url: 'http://localhost:8080/uploadFile' //上传接口地址
+                        , type: "POST"
+                        , contentType: false //让xhr自动处理Content-Type header，multipart/form-data需要生成随机的boundary
+                        , processData: false //不要处理data，让xhr自动处理
+                        , data: form
+                        , success: function (v) {
+                            $this.form.textarea = v.data
+
+                        }
+                        , error: function (s) {
+                            console.error("上传失败", s);
+                        }
+                    });
+
+                }, function (msg) {
+                    console.log("录音失败:" + msg);
+                    $this.rec.close(); //可以通过stop方法的第3个参数来自动调用close
+                    $this.rec = null;
+                });
+            },
+            /**播放录音**/
+            ljPlay() {
+                this.audioSrc = this.audioFile;
+                // audio.play();
+            },
+            /**获取和判断录音权限**/
+            init() {
+                //简单控制台直接测试方法：在任意(无CSP限制)页面内加载Recorder，加载成功后再执行一次本代码立即会有效果，import("https://xiangyuecn.github.io/Recorder/recorder.mp3.min.js").then(function(s){console.log("import ok")}).catch(function(e){console.error("import fail",e)})
+
+                // var rec;
+                /**调用open打开录音请求好录音权限**/
+                let $this = this;
+                console.log($this, '$this')
+                var recOpen = function (success) { //一般在显示出录音按钮或相关的录音界面时进行此方法调用，后面用户点击开始录音时就能畅通无阻了
+                    console.log($this, '$this')
+                    $this.rec = Recorder({
+                        type: "wav",
+                        sampleRate: 16000,
+                        bitRate: 16 //mp3格式，指定采样率hz、比特率kbps，其他参数使用默认配置；注意：是数字的参数必须提供数字，不要用字符串；需要使用的type类型，需提前把格式支持文件加载进来，比如使用wav格式需要提前加载wav.js编码引擎
+                        ,
+                        onProcess: function (buffers, powerLevel, bufferDuration, bufferSampleRate, newBufferIdx, asyncEnd) {
+                            $this.lyTime = bufferDuration;
+                            if ($this.lyTime > 180000) {
+                                $this.recStop()
+                            }
+                            // window.console.log(buffers,'buffers')
+                            // window.console.log(powerLevel,'powerLevel')
+                            // window.console.log(bufferDuration,'bufferDuration')
+                            // window.console.log(bufferSampleRate,'bufferSampleRate')
+                            // window.console.log(newBufferIdx,'newBufferIdx')
+                            // window.console.log(asyncEnd,'asyncEnd')
+                            //录音实时回调，大约1秒调用12次本回调
+                            //可利用extensions/waveview.js扩展实时绘制波形
+                            //可利用extensions/sonic.js扩展实时变速变调，此扩展计算量巨大，onProcess需要返回true开启异步模式
+                        }
+                    });
+
+                    //var dialog=createDelayDialog(); 我们可以选择性的弹一个对话框：为了防止移动端浏览器存在第三种情况：用户忽略，并且（或者国产系统UC系）浏览器没有任何回调，此处demo省略了弹窗的代码
+                    $this.rec.open(function () { //打开麦克风授权获得相关资源
+                        //dialog&&dialog.Cancel(); 如果开启了弹框，此处需要取消
+                        //rec.start() 此处可以立即开始录音，但不建议这样编写，因为open是一个延迟漫长的操作，通过两次用户操作来分别调用open和start是推荐的最佳流程
+
+                        success && success();
+                    }, function (msg, isUserNotAllow) { //用户拒绝未授权或不支持
+                        //dialog&&dialog.Cancel(); 如果开启了弹框，此处需要取消
+                        console.log((isUserNotAllow ? "UserNotAllow，" : "") + "无法录音:" + msg);
+                    });
+                };
+                recOpen(function () {
+                    // recStart();
+                    // setTimeout(recStop, 3000);
+                });
+            },
+            //我们可以选择性的弹一个对话框：为了防止移动端浏览器存在第三种情况：用户忽略，并且（或者国产系统UC系）浏览器没有任何回调
+            /*伪代码：
+            function createDelayDialog(){
+                if(Is Mobile){//只针对移动端
+                    return new Alert Dialog Component
+                        .Message("录音功能需要麦克风权限，请允许；如果未看到任何请求，请点击忽略~")
+                        .Button("忽略")
+                        .OnClick(function(){//明确是用户点击的按钮，此时代表浏览器没有发起任何权限请求
+                            //此处执行fail逻辑
+                            console.log("无法录音：权限请求被忽略");
+                        })
+                        .OnCancel(NOOP)//自动取消的对话框不需要任何处理
+                        .Delay(8000); //延迟8秒显示，这么久还没有操作基本可以判定浏览器有毛病
+                };
+            };
+            */
+            //语音合成
+            goHc() {
+                const then = this;
+                then.transfromed = false;
+                then.changeHc = false;
+                if (then.form.textarea == null || then.form.textarea == '') {
+                    alert("待合成的文字为空！，请输入...");
+                    return;
+                }
+                axios.post(this.baseUrl + '/yyhc',
+                    {
+                        param: then.form.textarea,
+                        victor: "aisjiuxu"
+                    })
+                    .then(function (response) {
+                        if (response.status === 200) {
+                            if (response.data.ret == true) {
+                                then.changeHc = true;
+                                then.yyhcLink = response.data.data;
+                                //得到音频文件下载地址
+                                console.log(response.data.data);
+                            } else {
+                                console.log(response.data.msg)
+                            }
+                        } else {
+                            console.log(response.statusText)
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log(error)
+                    })
+            },
+            //点击播放
+            goPlay() {
+                downloadUrlFile("http://localhost:8080/" + this.yyhcLink, this.yyhcLink);
+            }
+        },
+        mounted() {
+            // this.init()
+        }
+    })
+
+    // 保存到本地并自动点击
+    function saveAs(data, name) {
+        const urlObject = window.URL || window.webkitURL || window;
+        var export_blob = new Blob([data]);
+        const save_link = document.createElementNS('http://www.w3.org/1999/xhtml', 'a');
+        save_link.href = urlObject.createObjectURL(export_blob);
+        save_link.download = name;
+        save_link.click();
+    }
+
+    // 下载含有url的文件
+    function downloadUrlFile(url, fileName) {
+        const url2 = url.replace(/\\/g, '/');
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url2, true);
+        xhr.responseType = 'blob';
+        //xhr.setRequestHeader('Authorization', 'Basic a2VybWl0Omtlcm1pdA==');
+        // 为了避免大文件影响用户体验，建议加loading
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                // 获取文件blob数据并保存
+                saveAs(xhr.response, fileName);
+            }
+        };
+        xhr.send();
+
+    }
+
+</script>
+</html>
